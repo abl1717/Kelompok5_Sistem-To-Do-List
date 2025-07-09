@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Waktu pembuatan: 09 Jul 2025 pada 23.37
+-- Waktu pembuatan: 10 Jul 2025 pada 01.03
 -- Versi server: 10.4.32-MariaDB
 -- Versi PHP: 8.2.12
 
@@ -33,39 +33,25 @@ END$$
 -- Fungsi
 --
 CREATE DEFINER=`root`@`localhost` FUNCTION `avg_complete` (`userId` INT) RETURNS DECIMAL(10,2) DETERMINISTIC BEGIN
-    DECLARE total_completed_tasks INT;
-    DECLARE first_completed_date DATE;
-    DECLARE last_completed_date DATE;
-    DECLARE number_of_distinct_days INT;
-    DECLARE avg DECIMAL(10, 2);
-    SELECT COUNT(*)
-    INTO total_completed_tasks
-    FROM todos
-    WHERE status = 'completed'
-      AND user_id = userId;
+    DECLARE avg_val DECIMAL(10, 2);
 
-    SELECT MIN(DATE(created_at)), MAX(DATE(created_at))
-    INTO first_completed_date, last_completed_date
-    FROM todos
-    WHERE status = 'completed'
-      AND user_id = userId;
-    IF total_completed_tasks > 0 THEN
-        SELECT COUNT(DISTINCT DATE(created_at))
-        INTO number_of_distinct_days
+    -- Menghitung rata-rata tugas yang diselesaikan per hari yang berbeda
+    -- Ini dilakukan dengan:
+    -- 1. Subquery menghitung jumlah tugas yang diselesaikan untuk setiap hari unik (daily_completed_tasks)
+    -- 2. Fungsi AVG() kemudian menghitung rata-rata dari nilai-nilai daily_completed_tasks tersebut.
+    -- 3. IFNULL digunakan untuk memastikan mengembalikan 0.00 jika tidak ada tugas yang diselesaikan,
+    --    karena AVG() akan mengembalikan NULL untuk set data kosong.
+    SELECT IFNULL(AVG(daily_completed_tasks), 0.00)
+    INTO avg_val
+    FROM (
+        SELECT COUNT(id) AS daily_completed_tasks
         FROM todos
         WHERE status = 'completed'
-          AND user_id = userId;
-    ELSE
-        SET number_of_distinct_days = 0;
-    END IF;
+          AND user_id = userId
+        GROUP BY DATE(created_at)
+    ) AS daily_counts; -- Alias untuk subquery
 
-    IF number_of_distinct_days > 0 THEN
-        SET avg = total_completed_tasks / number_of_distinct_days;
-    ELSE
-        SET avg = 0.00; 
-    END IF;
-
-    RETURN avg;
+    RETURN avg_val;
 END$$
 
 CREATE DEFINER=`root`@`localhost` FUNCTION `total_todo` (`userId` INT) RETURNS INT(11) DETERMINISTIC BEGIN
@@ -118,7 +104,8 @@ INSERT INTO `todos` (`id`, `user_id`, `title`, `description`, `priority`, `deadl
 (13, 4, '2', '2', 2, '0000-00-00', 'completed', '2025-07-07 07:32:36'),
 (14, 8, 'asd', 'asd', 5, '2025-07-24', 'pending', '2025-07-08 01:32:56'),
 (15, 4, 'aaa', 'aaa', 5, '0000-00-00', 'completed', '2025-07-08 02:36:19'),
-(16, 4, 'b', 'b', 3, '0000-00-00', 'completed', '2025-07-08 02:40:21');
+(16, 4, 'b', 'b', 3, '0000-00-00', 'completed', '2025-07-08 02:40:21'),
+(17, 4, 'masak', 'masak rendang', 5, '2025-07-11', 'pending', '2025-07-09 22:26:18');
 
 -- --------------------------------------------------------
 
@@ -181,7 +168,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT untuk tabel `todos`
 --
 ALTER TABLE `todos`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`
